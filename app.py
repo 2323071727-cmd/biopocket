@@ -3,32 +3,51 @@ import cv2
 import numpy as np
 import time
 
-# --- 1. 页面基础设置 ---
-st.set_page_config(page_title="BioPocket 随身实验室", page_icon="🧬", layout="centered")
+# -----------------------------------------------------------------------------
+# 1. 页面基础设置 (已修复：使用 wide 宽屏模式适配手机)
+# -----------------------------------------------------------------------------
+st.set_page_config(page_title="BioPocket", page_icon="🧬", layout="wide")
 
-# --- 插入这段全屏代码 Start ---
+# -----------------------------------------------------------------------------
+# 2. 移动端深度适配 (CSS 魔法)
+# -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-        /* 隐藏 Streamlit 默认的汉堡菜单和页脚 */
+        /* --- 1. 核心修复：禁止手机下拉刷新 (解决滑不上去的问题) --- */
+        body {
+            overscroll-behavior-y: none !important;
+        }
+        
+        /* --- 2. 核心修复：隐藏右上角汉堡菜单、右下角头像和Github链接 --- */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;} 
+        .stDeployButton {display: none;}
+        div[data-testid="stToolbar"] {display: none !important;}
+        .viewerBadge_container__1QSob {display: none !important;}
+        
+        /* --- 3. 布局优化：减少手机两边的留白，让内容撑满屏幕 --- */
+        .block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 3rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        
+        /* --- 4. 字体与按钮优化：手机上更好点 --- */
+        .stButton button {
+            width: 100%;
+            border-radius: 8px;
+            height: 3em;
+        }
     </style>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 """, unsafe_allow_html=True)
-# --- 插入这段全屏代码 End ---
-# 隐藏默认菜单
-st.markdown("""
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
 
-# --- 2. 侧边栏导航 ---
+# -----------------------------------------------------------------------------
+# 3. 侧边栏导航
+# -----------------------------------------------------------------------------
 st.sidebar.title("🧬 BioPocket")
 st.sidebar.info("全场景移动端科研智能体")
 option = st.sidebar.selectbox("功能切换", [
@@ -47,6 +66,7 @@ if option == "🏠 项目首页":
     st.success("欢迎进入 BioPocket。本项目旨在通过 AI 视觉与大模型技术，解决生物实验中的痛点。")
     
     st.markdown("---")
+    # 这里的列布局在手机上会自动变成竖排，不用担心
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("已识别菌落", "1,240+", "+12%")
