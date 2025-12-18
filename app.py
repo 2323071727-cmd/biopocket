@@ -17,11 +17,11 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# 2. 界面样式 (强制隐藏网页元素)
+# 2. 界面样式 (强制隐藏网页元素 + 修复字体)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-        /* 隐藏顶部红线和菜单 */
+        /* 隐藏 Streamlit 自带的顶部红线、菜单和 Footer */
         header {visibility: hidden;}
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
@@ -29,6 +29,7 @@ st.markdown("""
 
         body {font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;}
         
+        /* 结果卡片样式 */
         .result-card {
             background-color: #f8f9fa; 
             padding: 20px;
@@ -38,6 +39,7 @@ st.markdown("""
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
+        /* 强制黑字 */
         .result-card, .result-card * {
             color: #212529 !important; 
             font-size: 16px !important;
@@ -75,6 +77,7 @@ def read_full_pdf(uploaded_file):
     except Exception as e:
         return None
 
+# === HTML 清洗函数 ===
 def clean_html_output(text):
     if not text: return ""
     text = text.strip()
@@ -87,10 +90,10 @@ def clean_html_output(text):
 # 4. 侧边栏
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # ✅ 修复点：这里必须是纯链接，不能带 []
+    # ✅ 修复：纯净链接，绝不报错
     st.image("[https://cdn-icons-png.flaticon.com/512/3022/3022288.png](https://cdn-icons-png.flaticon.com/512/3022/3022288.png)", width=60)
     st.title("BioPocket")
-    st.caption("v21.4 | Final") 
+    st.caption("v21.3 | Fixed") 
     st.markdown("---")
     
     menu = st.radio(
@@ -104,6 +107,7 @@ with st.sidebar:
         st.info("推荐模型：**智谱 GLM-4**")
         api_key = st.text_input("API Key", type="password")
         with st.expander("设置"):
+            # ✅ 修复：纯净链接
             base_url = st.text_input("Base URL", value="[https://open.bigmodel.cn/api/paas/v4/](https://open.bigmodel.cn/api/paas/v4/)")
 
 # -----------------------------------------------------------------------------
@@ -115,7 +119,7 @@ if "🏠 实验室工作台" in menu:
     col1, col2 = st.columns(2)
     col1.metric("今日分析", "12")
     col2.metric("文献库", "102")
-    # ✅ 修复点：纯链接
+    # ✅ 修复：纯净链接
     st.image("[https://images.unsplash.com/photo-1532094349884-543bc11b234d](https://images.unsplash.com/photo-1532094349884-543bc11b234d)", use_container_width=True)
 
 elif "🧫 智能计数" in menu:
@@ -132,6 +136,7 @@ elif "🧫 智能计数" in menu:
     if up:
         fb = np.asarray(bytearray(up.read()), dtype=np.uint8)
         img = cv2.imdecode(fb, 1)
+        # 缩小图片优化手机性能
         img = cv2.resize(img, (int(img.shape[1]*0.6), int(img.shape[0]*0.6)))
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(gray)
