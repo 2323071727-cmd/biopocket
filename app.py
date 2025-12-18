@@ -7,7 +7,7 @@ import pandas as pd
 # 1. 全局配置
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="BioPocket V8", 
+    page_title="BioPocket V9", 
     page_icon="🧫", 
     layout="wide", 
     initial_sidebar_state="expanded"
@@ -33,9 +33,9 @@ st.markdown("""
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
     st.title("BioPocket")
-    st.caption("v8.0.0 | ROI Focus Edition")
+    st.caption("v9.0.0 | Invert Color Fix")
     st.markdown("---")
-    menu = st.radio("功能导航", ["📊 综合看板", "🧫 菌落计数 (聚焦版)", "📷 仪器识别", "📄 文献速读"], index=1)
+    menu = st.radio("功能导航", ["📊 综合看板", "🧫 菌落计数 (修复版)", "📷 仪器识别", "📄 文献速读"], index=1)
 
 # -----------------------------------------------------------------------------
 # 4. 主逻辑
@@ -44,11 +44,11 @@ with st.sidebar:
 # === 页面 1: 综合看板 ===
 if "看板" in menu:
     st.title("📊 实验室综合管控台")
-    st.info("（看板内容已折叠，专注于菌落计数调试）")
+    st.info("（看板内容已折叠）")
 
-# === 页面 2: 菌落计数 (V8 边缘剔除版) ===
+# === 页面 2: 菌落计数 (V9 修复反色问题) ===
 elif "菌落" in menu:
-    st.title("🧫 智能菌落计数 (边缘剔除版)")
+    st.title("🧫 智能菌落计数 (反色修复版)")
     
     c1, c2 = st.columns([1, 2])
     
@@ -56,14 +56,17 @@ elif "菌落" in menu:
     with c1:
         st.markdown("### 🎯 第一步：区域锁定 (ROI)")
         with st.container(border=True):
-            st.info("👇 调小这个值，把培养皿边缘的塑料圈裁掉！")
-            # ROI 半径控制
             roi_radius = st.slider("有效区域半径 (ROI Radius)", 10, 500, 280, help="缩小此圆圈以排除边缘反光干扰")
         
-        st.markdown("### 🛠️ 第二步：图像增强")
+        st.markdown("### 🛠️ 第二步：图像增强与阈值")
         with st.container(border=True):
-            use_clahe = st.checkbox("启用 CLAHE 增强", value=True, help="对于中间模糊的菌落，开启此项可显著提高对比度")
-            thresh_val = st.slider("亮度阈值 (Threshold)", 0, 255, 140, help="越小识别越黑的物体，越大识别范围越广")
+            # === V9 核心修复：新增反色开关 ===
+            st.markdown("**关键设置：菌落颜色**")
+            is_light_colony = st.checkbox("✅ 我的菌落是亮的 (背景是暗的)", value=True, help="如果你的培养皿是黑底白菌，请勾选此项！")
+            
+            st.markdown("---")
+            use_clahe = st.checkbox("启用 CLAHE 增强", value=True)
+            thresh_val = st.slider("亮度阈值 (Threshold)", 0, 255, 140)
             min_area = st.slider("最小菌落面积 (Min Area)", 1, 200, 10)
 
         uploaded_file = st.file_uploader("上传培养皿图像", type=['jpg', 'png'])
@@ -71,73 +74,76 @@ elif "菌落" in menu:
     # --- 右侧：可视化分析 ---
     with c2:
         if uploaded_file:
-            # 1. 读取图像
+            # 1. 读取和预处理
             file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
             original_image = cv2.imdecode(file_bytes, 1)
             
-            # 缩放图片以加快处理 (固定宽度处理，防止大图卡顿)
-            scale_percent = 60 # 缩小一点
+            scale_percent = 60
             width = int(original_image.shape[1] * scale_percent / 100)
             height = int(original_image.shape[0] * scale_percent / 100)
             dim = (width, height)
             image = cv2.resize(original_image, dim, interpolation = cv2.INTER_AREA)
             
-            # 获取中心点
             h, w = image.shape[:2]
             center_x, center_y = w // 2, h // 2
 
-            # 2. 核心步骤：创建圆形掩膜 (ROI Mask)
-            # 创建一个全黑的图
+            # 2. 创建 ROI 掩膜
             mask = np.zeros((h, w), dtype=np.uint8)
-            # 在中间画个白色的圆 (大小由滑块控制)
             cv2.circle(mask, (center_x, center_y), roi_radius, 255, -1)
             
-            # 3. 预处理
+            # 3. 转灰度 + CLAHE 增强
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            
-            # 可选：CLAHE 增强 (对付中间对比度低的问题)
             if use_clahe:
                 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
                 gray = clahe.apply(gray)
 
-            # 4. 应用掩膜 (只保留圆圈内的图像，圆圈外变黑)
+            # 4. 应用掩膜 (只保留圆圈内)
             masked_gray = cv2.bitwise_and(gray, gray, mask=mask)
 
-            # 5. 阈值处理
+            # 5. 阈值处理 (V9 核心修复逻辑)
             blurred = cv2.GaussianBlur(masked_gray, (5, 5), 0)
-            # THRESH_BINARY_INV 适合：白底黑菌。如果是黑底白菌，请去掉 _INV
-            _, thresh = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY_INV)
             
-            # 再次应用掩膜 (确保边缘切断的切口不被识别为轮廓)
+            # 根据用户的选择，决定是找亮的还是找暗的
+            if is_light_colony:
+                # 找亮菌落：使用标准二值化 (THRESH_BINARY)
+                # 大于阈值的变白(菌落)，小于的变黑(背景)
+                _, thresh = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY)
+            else:
+                # 找暗菌落：使用反向二值化 (THRESH_BINARY_INV)
+                # 小于阈值的变白(菌落)，大于的变黑(背景)
+                _, thresh = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY_INV)
+            
+            # 再次应用掩膜，确保切割干净
             thresh = cv2.bitwise_and(thresh, thresh, mask=mask)
 
-            # 6. 轮廓查找
+            # 6. 轮廓查找与过滤
             contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             result_img = image.copy()
-            # 画出红色的 ROI 圈，告诉用户现在的分析范围在哪
             cv2.circle(result_img, (center_x, center_y), roi_radius, (0, 0, 255), 2)
             
             count = 0
             for cnt in contours:
                 area = cv2.contourArea(cnt)
-                if min_area < area < 2000: # 增加最大面积限制，防止识别错误的色块
+                # 稍微放宽一点面积限制
+                if min_area < area < 2500:
                     count += 1
                     cv2.drawContours(result_img, [cnt], -1, (0, 255, 0), 2)
 
             # 7. 结果展示
             st.markdown("#### 👁️ 视觉分析结果")
-            
             img_c1, img_c2 = st.columns(2)
             with img_c1:
-                st.image(result_img, channels="BGR", caption=f"最终识别 (红色圈内为有效区)", use_container_width=True)
+                st.image(result_img, channels="BGR", caption=f"最终识别 (绿色为识别到的菌落)", use_container_width=True)
             with img_c2:
-                st.image(masked_gray, caption="算法视角 (已剔除边缘 + 增强)", use_container_width=True)
+                # 这里的标题也改一下，提示用户
+                algo_caption = "算法视角 (白色代表被识别的目标)"
+                st.image(thresh, caption=algo_caption, use_container_width=True, clamp=True)
                 
-            st.success(f"✅ 剔除边缘干扰后，共计数：**{count}** CFU")
+            st.success(f"✅ 分析完成，共计数：**{count}** CFU")
 
         else:
-            st.info("👈 请上传图片，然后尝试调节 '有效区域半径' 滑块。")
+            st.info("👈 请上传图片。对于黑底白菌，请确保勾选了 '我的菌落是亮的'。")
 
 # === 其他页面保留 ===
 elif "仪器" in menu:
