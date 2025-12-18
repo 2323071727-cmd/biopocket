@@ -83,12 +83,12 @@ def read_full_pdf(uploaded_file):
     except Exception as e:
         return None
 
-# === V23 强力清洗函数 (修复显示代码的问题) ===
+# === V23 强力清洗函数 (专门修复显示代码的问题) ===
 def clean_html_output(text):
     text = text.strip()
-    # 1. 去掉开头的 ```html 或 ```xml 或 ``` 
+    # 1. 暴力去掉开头的 ```html, ```xml, 或单纯的 ``` 
     text = re.sub(r'^```[a-zA-Z]*\n?', '', text)
-    # 2. 去掉结尾的 ```
+    # 2. 暴力去掉结尾的 ```
     text = re.sub(r'\n?```$', '', text)
     return text.strip()
 
@@ -96,7 +96,7 @@ def clean_html_output(text):
 # 4. 侧边栏
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
+    st.image("[https://cdn-icons-png.flaticon.com/512/3022/3022288.png](https://cdn-icons-png.flaticon.com/512/3022/3022288.png)", width=60)
     st.title("BioPocket")
     st.caption("v23.0 | HTML Rendering Fix")
     st.markdown("---")
@@ -114,7 +114,7 @@ with st.sidebar:
         api_key = st.text_input("API Key (在此输入)", type="password")
         
         with st.expander("高级参数设置", expanded=False):
-            base_url = st.text_input("Base URL", value="https://open.bigmodel.cn/api/paas/v4/")
+            base_url = st.text_input("Base URL", value="[https://open.bigmodel.cn/api/paas/v4/](https://open.bigmodel.cn/api/paas/v4/)")
 
 # -----------------------------------------------------------------------------
 # 5. 主逻辑区
@@ -128,7 +128,7 @@ if "工作台" in menu:
     col1.metric("累计分析样本", "1,524", "+12 今天")
     col2.metric("文献智库", "102 篇", "已索引")
     col3.metric("云端算力", "GLM-4", "Online")
-    st.image("https://images.unsplash.com/photo-1532094349884-543bc11b234d", use_container_width=True)
+    st.image("[https://images.unsplash.com/photo-1532094349884-543bc11b234d](https://images.unsplash.com/photo-1532094349884-543bc11b234d)", use_container_width=True)
 
 elif "计数" in menu:
     st.title("🧫 智能计数 (AI Counter)")
@@ -188,7 +188,7 @@ elif "仪器" in menu:
                         b64 = encode_image(f_img.getvalue())
                         p = "你是一位专家。请识别仪器。输出HTML class='result-card'。不要使用markdown代码块。"
                         r = cli.chat.completions.create(model="glm-4v", messages=[{"role":"user","content":[{"type":"text","text":p},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]}] )
-                        # 使用 V23 强力清洗
+                        # V23 清洗
                         clean = clean_html_output(r.choices[0].message.content)
                         st.markdown(clean, unsafe_allow_html=True)
                         st.success("✅ 检索成功")
@@ -212,7 +212,7 @@ elif "文献" in menu:
                             cli = OpenAI(api_key=api_key, base_url=base_url)
                             deep_prompt = """
                             你是一位精通中英文的资深生物科学家。精读全文。必须中文回答。
-                            **请直接输出HTML代码，不要包裹在 ```html 中。**
+                            **请直接输出HTML代码，严禁使用Markdown代码块（不要用 ```html）。**
                             
                             输出结构（确保使用 class="result-card"）：
                             <div class="result-card"><h3>📑 深度导读</h3><h4>1.标题翻译</h4>...<h4>2.核心发现</h4>...</div>
@@ -221,7 +221,7 @@ elif "文献" in menu:
                             """
                             resp = cli.chat.completions.create(model="glm-4-flash", messages=[{"role": "user", "content": f"{deep_prompt}\n\n{truncated_text}"}], max_tokens=3000)
                         
-                        # 使用 V23 强力清洗
+                        # V23 强力清洗：剥掉代码外壳
                         clean = clean_html_output(resp.choices[0].message.content)
                         st.markdown(clean, unsafe_allow_html=True)
                         st.success("✅ 报告已生成")
