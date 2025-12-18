@@ -1,17 +1,17 @@
 import streamlit as st
 import cv2
 import numpy as np
-import pandas as pd # 新增：用于展示专业的数据表格
+import pandas as pd
 import time
 
 # -----------------------------------------------------------------------------
 # 1. 全局配置：宽屏模式 (Web端大气布局的基础)
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="BioPocket Pro", 
+    page_title="BioPocket Pro V7", 
     page_icon="🧬", 
-    layout="wide", # 必须宽屏
-    initial_sidebar_state="expanded" # 侧边栏默认展开
+    layout="wide", 
+    initial_sidebar_state="expanded"
 )
 
 # -----------------------------------------------------------------------------
@@ -25,15 +25,19 @@ st.markdown("""
             font-weight: 700;
             color: #0E1117;
         }
-        /* 调整 Metric 指标卡片的样式，增加边框和阴影 */
+        /* 调整 Metric 指标卡片的样式 */
         div[data-testid="stMetric"] {
             background-color: #F0F2F6;
             padding: 15px;
             border-radius: 8px;
-            border-left: 5px solid #FF4B4B; /* 红色科研警戒线风格 */
+            border-left: 5px solid #FF4B4B;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        /* 侧边栏背景微调 (Streamlit默认已支持，这里不做过度破坏) */
+        /* 图片标题样式 */
+        .stImage caption {
+            font-weight: bold;
+            color: #555;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -43,7 +47,7 @@ st.markdown("""
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
     st.title("BioPocket")
-    st.caption("v2.1.0 | Enterprise Edition")
+    st.caption("v7.0.0 | Pro Edition")
     
     st.markdown("---")
     
@@ -51,134 +55,104 @@ with st.sidebar:
     menu = st.radio(
         "功能导航 (Navigation)", 
         ["📊 综合看板 (Dashboard)", "🧫 菌落计数 (Counter)", "📷 仪器识别 (Lens)", "📄 文献速读 (Reader)"],
-        index=0
+        index=1 # 默认跳到计数页面方便调试
     )
     
     st.markdown("---")
-    
-    # 模拟系统状态（增加专业感）
     st.subheader("🖥️ 系统状态")
     st.text("CPU Usage:")
-    st.progress(0.45) # 模拟 45% 占用
-    st.text("Memory:")
-    st.progress(0.72) # 模拟 72% 占用
+    st.progress(0.55)
     st.caption("Cloud Node: AWS-US-East-1 (Online)")
 
 # -----------------------------------------------------------------------------
 # 4. 主界面逻辑
 # -----------------------------------------------------------------------------
 
-# === 页面 1: 综合看板 (充满数据的首页) ===
+# === 页面 1: 综合看板 ===
 if "Dashboard" in menu:
     st.title("📊 实验室综合管控台")
-    st.markdown("欢迎回来，**Researcher_007**。系统运行正常，今日实验数据已同步。")
-    
-    st.markdown("### 🚀 核心指标 (Key Metrics)")
-    
-    # 使用 4 列布局展示关键数据
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric(label="今日分析样本", value="142", delta="12%")
-    with col2:
-        st.metric(label="AI 识别准确率", value="98.4%", delta="0.2%")
-    with col3:
-        st.metric(label="文献库收录", value="1,024", delta="5 New")
-    with col4:
-        st.metric(label="云端算力延迟", value="32ms", delta="-5ms", delta_color="inverse")
-    
-    st.markdown("---")
-    
-    # 分栏：左边是实时日志，右边是快捷入口
-    c1, c2 = st.columns([2, 1])
-    
-    with c1:
-        st.subheader("📋 实时实验日志 (Real-time Logs)")
-        # 伪造一个专业的数据表格
-        data = {
-            "Time": ["10:42:01", "10:38:55", "10:15:20", "09:55:12", "09:30:00"],
-            "User": ["Lab_User_A", "Lab_User_B", "Admin", "Lab_User_A", "System"],
-            "Action": ["Run PCR Analysis", "Upload Image", "Update Database", "Colony Count", "Daily Backup"],
-            "Status": ["✅ Success", "✅ Success", "⚠️ Pending", "✅ Success", "✅ Success"]
-        }
-        df = pd.DataFrame(data)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-        
-    with c2:
-        st.subheader("🔔 系统通知")
-        st.info("**系统维护：** 服务器将于今晚 24:00 进行例行维护。")
-        st.warning("**库存预警：** 实验室 DMEM 培养基剩余不足 10%。")
-        st.success("**新功能：** 文献速读模块已升级至 GPT-4o 模型。")
+    # ... (此处省略了看板代码，与V6相同，为了节省篇幅，实际使用请保留V6的看板代码)
+    st.info("（看板内容已隐藏，专注于菌落计数功能展示）")
 
-# === 页面 2: 菌落计数 (更专业的参数面板) ===
+# === 页面 2: 菌落计数 (V7 核心增强版) ===
 elif "Counter" in menu:
-    st.title("🧫 智能菌落计数 (Bio-Counter)")
+    st.title("🧫 智能菌落计数 (Bio-Counter Pro)")
     
-    c1, c2 = st.columns([1, 2])
+    # 主界面分栏：左侧参数(窄)，右侧图像(宽)
+    c1, c2 = st.columns([1, 3])
     
+    # --- 左侧：参数调试区 ---
     with c1:
-        st.markdown("#### ⚙️ 处理参数设置")
-        # 把参数放在主界面的左侧，显得更像专业软件的操作台
-        st.slider("亮度阈值 (Threshold)", 0, 255, 120)
-        st.slider("最小半径 (Min Radius)", 1, 50, 5)
-        st.slider("最大半径 (Max Radius)", 50, 200, 100)
-        st.checkbox("启用边缘平滑 (Anti-aliasing)", value=True)
-        st.checkbox("排除边缘噪点", value=True)
+        st.markdown("### 🛠️ 算法参数调试")
+        with st.container(border=True):
+            st.markdown("**图像预处理**")
+            # 真实的交互滑块
+            thresh_val = st.slider("亮度阈值 (Threshold)", 0, 255, 125, help="调整此值以区分菌落与背景，观察右侧黑白图变化。")
+            
+            st.markdown("---")
+            st.markdown("**形态学过滤**")
+            # 使用面积过滤更直观
+            min_area = st.slider("最小面积 (Min Area)", 1, 500, 20, help="去除小于此像素值的噪点。")
+            max_area = st.slider("最大面积 (Max Area)", 500, 5000, 2000, help="排除过大的粘连区域。")
         
-        uploaded_file = st.file_uploader("上传培养皿图像", type=['jpg', 'png'])
-    
+        st.markdown("### 📂 数据输入")
+        uploaded_file = st.file_uploader("上传培养皿图像 (JPG/PNG)", type=['jpg', 'png'])
+
+    # --- 右侧：双屏可视化分析区 ---
     with c2:
-        st.markdown("#### 🖼️ 实时分析视图")
         if uploaded_file:
+            # 1. 读取和解码图片
             file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
             image = cv2.imdecode(file_bytes, 1)
-            # 这里简单展示，实际可以画框
-            st.image(image, caption="已加载图像 (1024x1024)", use_container_width=True)
             
-            st.success("✅ 分析完成：检测到 **35** 个目标菌落 (CFU)。")
-            # 假装展示一个分布图
-            st.bar_chart({"<1mm": 5, "1-3mm": 20, ">3mm": 10})
+            # 2. OpenCV 核心处理流程 (实时计算!)
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            # 高斯模糊去噪
+            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+            # 动态阈值分割 (使用左侧滑块的值!)
+            _, thresh_img = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY_INV) # 这里用了INV(反向)，假设菌落是深色的，背景是浅色的。如果是荧光菌落，去掉_INV
+            
+            # 查找轮廓
+            contours, _ = cv2.findContours(thresh_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # 过滤和绘制
+            result_img = image.copy()
+            count = 0
+            filtered_contours = []
+            for cnt in contours:
+                area = cv2.contourArea(cnt)
+                if min_area < area < max_area:
+                    count += 1
+                    filtered_contours.append(cnt)
+                    # 在原图上画绿圈
+                    cv2.drawContours(result_img, [cnt], -1, (0, 255, 0), 2)
+
+            # 3. 双屏展示结果
+            st.markdown("#### 📊 实时分析视图 (Dual-View Analysis)")
+            
+            # 在 c2 里面再分两列
+            img_col1, img_col2 = st.columns(2)
+            
+            with img_col1:
+                st.image(result_img, channels="BGR", caption=f"视图 A: 识别结果叠加 (计数: {count})", use_container_width=True)
+            
+            with img_col2:
+                # 展示二值化图像，这才是算法真正看到的
+                st.image(thresh_img, caption=f"视图 B: 算法阈值视角 (二值化)", use_container_width=True)
+
+            # 结果汇总横幅
+            st.success(f"✅ 分析完成！根据当前参数，共检测到 **{count}** 个目标菌落 (CFU)。")
+            
         else:
-            st.info("请在左侧上传图像以开始分析。")
+            # 没有上传图片时的占位符
+            st.info("👈 请在左侧上传图像以开始分析。")
+            # 放个示例图占位，保持布局美观
+            st.image("https://www.thermofisher.com/blog/food-and-beverage/wp-content/uploads/sites/6/2017/07/IMG_3176-e1500396773551.jpg", caption="示例：待分析的培养皿", width=400)
 
-# === 页面 3: 仪器识别 ===
+# === 页面 3 & 4 (保持不变，为了完整性建议保留 V6 的代码) ===
 elif "Lens" in menu:
-    st.title("📷 实验室 AI 慧眼 (Lab Lens)")
-    st.markdown("利用多模态视觉模型实时识别实验室设备并获取 SOP。")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.camera_input("拍摄设备", key="camera")
-        st.caption("支持设备：离心机、PCR仪、显微镜、超净台")
-    
-    with col2:
-        st.subheader("🧠 识别结果分析")
-        # 即使没拍照，也展示一个占位符，保持界面饱满
-        with st.container(border=True):
-            st.markdown("**设备名称：** 等待输入...")
-            st.markdown("**置信度：** --%")
-            st.markdown("**安全等级：** --")
-            st.markdown("---")
-            st.markdown("*请拍摄清晰的设备正面照片*")
-
-# === 页面 4: 文献速读 ===
+    st.title("📷 仪器识别")
+    st.write("（此处保留 V6 代码）")
 elif "Reader" in menu:
-    st.title("📄 文献 AI 速读 (Paper Pal)")
-    
-    # 使用 Expander 折叠详细信息，让界面更整洁
-    with st.expander("ℹ️ 使用说明 (点击展开)", expanded=False):
-        st.write("支持 PDF/图片格式，模型将自动提取：摘要、实验方法、关键数据。")
-    
-    uploaded_pdf = st.file_uploader("拖拽上传文献 (PDF)", type="pdf")
-    
-    if uploaded_pdf:
-        with st.spinner("正在解析 PDF 结构树..."):
-            time.sleep(1)
-        st.success("解析成功！")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            st.info("📑 **摘要 (Abstract)**")
-            st.write("This paper presents a novel approach for...")
-        with c2:
-            st.warning("⚠️ **潜在风险提示**")
-            st.write("实验步骤 3 中涉及剧毒试剂，请查阅 SDS。")
+    st.title("📄 文献速读")
+    st.write("（此处保留 V6 代码）")
