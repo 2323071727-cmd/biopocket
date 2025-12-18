@@ -1,62 +1,53 @@
 import streamlit as st
 import cv2
 import numpy as np
-import pandas as pd
-import time
 import base64
 from openai import OpenAI
 import pdfplumber
 import re
 
 # -----------------------------------------------------------------------------
-# 1. 全局配置 (V21 Mobile Fix)
+# 1. 全局配置
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="BioPocket Pro", 
+    page_title="BioPocket", 
     page_icon="🧬", 
     layout="wide", 
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # -----------------------------------------------------------------------------
-# 2. 界面样式
+# 2. 界面样式 (强制隐藏网页元素)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
+        /* 隐藏顶部红线和菜单 */
+        header {visibility: hidden;}
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        [data-testid="stToolbar"] {visibility: hidden;}
+
         body {font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;}
-        h1 {color: #0E1117; font-weight: 700; letter-spacing: -0.5px;}
         
         .result-card {
             background-color: #f8f9fa; 
-            padding: 24px;
+            padding: 20px;
             border-radius: 8px;
             border-left: 5px solid #0d6efd; 
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
-        /* 强制黑字 */
-        .result-card, .result-card p, .result-card li, .result-card div, .result-card span {
+        .result-card, .result-card * {
             color: #212529 !important; 
             font-size: 16px !important;
-            line-height: 1.75 !important;
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif !important;
         }
         
         .result-card h3 { 
             color: #0b5ed7 !important; 
             margin-top: 0 !important; 
-            font-size: 1.25rem !important;
             border-bottom: 1px solid #dee2e6;
-            padding-bottom: 12px;
-            margin-bottom: 16px !important;
-        }
-        
-        .result-card h4 { 
-            color: #495057 !important; 
-            font-weight: 700 !important; 
-            margin-top: 20px !important; 
-            font-size: 1.1rem !important;
+            padding-bottom: 10px;
         }
 
         .reagent-card { background-color: #f1f8f5; border-left: 5px solid #198754; }
@@ -84,153 +75,125 @@ def read_full_pdf(uploaded_file):
     except Exception as e:
         return None
 
-# === 新增：HTML 清洗函数 (修复文献显示为代码的问题) ===
 def clean_html_output(text):
     if not text: return ""
     text = text.strip()
-    # 去掉 AI 可能添加的 ```html 标记
     text = re.sub(r'^```html', '', text, flags=re.IGNORECASE)
     text = re.sub(r'^```', '', text)
     text = re.sub(r'```$', '', text)
     return text.strip()
 
 # -----------------------------------------------------------------------------
-# 4. 侧边栏导航
+# 4. 侧边栏
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
+    # ✅ 修复点：这里必须是纯链接，不能带 []
+    st.image("[https://cdn-icons-png.flaticon.com/512/3022/3022288.png](https://cdn-icons-png.flaticon.com/512/3022/3022288.png)", width=60)
     st.title("BioPocket")
-    st.caption("v21.1 | Mobile Fix")
+    st.caption("v21.4 | Final") 
     st.markdown("---")
     
     menu = st.radio(
-        "功能模组 (Modules)", 
+        "功能模组", 
         ["🏠 实验室工作台", "🧫 智能计数", "📷 仪器图谱", "📄 文献精读 (Pro)"], 
         index=0
     )
     
     if menu in ["📷 仪器图谱", "📄 文献精读 (Pro)"]:
         st.markdown("---")
-        st.markdown("#### 🧠 AI 引擎配置")
         st.info("推荐模型：**智谱 GLM-4**")
-        api_key = st.text_input("API Key (在此输入)", type="password")
-        
-        with st.expander("高级参数设置", expanded=False):
-            base_url = st.text_input("Base URL", value="https://open.bigmodel.cn/api/paas/v4/")
+        api_key = st.text_input("API Key", type="password")
+        with st.expander("设置"):
+            base_url = st.text_input("Base URL", value="[https://open.bigmodel.cn/api/paas/v4/](https://open.bigmodel.cn/api/paas/v4/)")
 
 # -----------------------------------------------------------------------------
 # 5. 主逻辑区
 # -----------------------------------------------------------------------------
 
-# === 页面 1: 实验室工作台 ===
-if "工作台" in menu:
+if "🏠 实验室工作台" in menu:
     st.title("🚀 实验室工作台")
-    st.markdown("**BioPocket 科研智能体** - 您的口袋实验室助手")
-    st.markdown("---")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("累计分析样本", "1,524", "+12 今天")
-    col2.metric("文献智库", "102 篇", "已索引")
-    col3.metric("云端算力", "GLM-4", "Online")
-    st.image("https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&q=80&w=1000", use_container_width=True)
+    col1, col2 = st.columns(2)
+    col1.metric("今日分析", "12")
+    col2.metric("文献库", "102")
+    # ✅ 修复点：纯链接
+    st.image("[https://images.unsplash.com/photo-1532094349884-543bc11b234d](https://images.unsplash.com/photo-1532094349884-543bc11b234d)", use_container_width=True)
 
-# === 页面 2: 智能计数 ===
-elif "计数" in menu:
-    st.title("🧫 智能计数 (AI Counter)")
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        st.markdown("### 🛠️ 参数配置")
-        with st.container(border=True):
-            count_mode = st.radio("检测对象", ["🧫 细菌菌落 (CFU)", "🦠 噬菌体空斑 (PFU)", "🩸 细胞微粒 (Cells)"])
-            if "细菌" in count_mode: d_l, d_m = True, 10
-            elif "噬菌体" in count_mode: d_l, d_m = False, 5
-            else: d_l, d_m = False, 2
-            roi = st.slider("ROI 有效半径", 10, 500, 280)
-            is_light = st.checkbox("目标为亮色", value=d_l)
-            clahe = st.checkbox("自适应增强", value=True)
-            th_val = st.slider("阈值灵敏度", 0, 255, 140)
-            min_a = st.slider("最小面积过滤", 1, 200, d_m)
-        up = st.file_uploader("上传实验图像", type=['jpg','png'])
-    with c2:
-        if up:
-            fb = np.asarray(bytearray(up.read()), dtype=np.uint8)
-            img = cv2.imdecode(fb, 1)
-            img = cv2.resize(img, (int(img.shape[1]*0.6), int(img.shape[0]*0.6)))
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            if clahe: gray = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(gray)
-            mask = np.zeros(img.shape[:2], dtype=np.uint8)
-            cv2.circle(mask, (img.shape[1]//2, img.shape[0]//2), roi, 255, -1)
-            masked = cv2.bitwise_and(gray, gray, mask=mask)
-            blur = cv2.GaussianBlur(masked, (5,5), 0)
-            if is_light: _, th = cv2.threshold(blur, th_val, 255, cv2.THRESH_BINARY)
-            else: _, th = cv2.threshold(blur, th_val, 255, cv2.THRESH_BINARY_INV)
-            th = cv2.bitwise_and(th, th, mask=mask)
-            cnts, _ = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            res = img.copy()
-            cv2.circle(res, (img.shape[1]//2, img.shape[0]//2), roi, (0,0,255), 2)
-            c = 0
-            for ct in cnts:
-                if min_a < cv2.contourArea(ct) < 3000:
-                    c+=1
-                    cv2.drawContours(res, [ct], -1, (0,255,0), 2)
-            st.image(res, channels="BGR", caption=f"识别结果: {c}", use_container_width=True)
-            st.success(f"✅ 计数完成：共检测到 **{c}** 个目标。")
+elif "🧫 智能计数" in menu:
+    st.title("🧫 智能计数")
+    with st.expander("参数设置", expanded=True):
+        count_mode = st.radio("模式", ["细菌 (CFU)", "噬菌体 (PFU)", "细胞"])
+        if "细菌" in count_mode: d_l, d_m = True, 10
+        elif "噬菌体" in count_mode: d_l, d_m = False, 5
+        else: d_l, d_m = False, 2
+        roi = st.slider("范围", 10, 500, 280)
+        th_val = st.slider("灵敏度", 0, 255, 140)
+        
+    up = st.file_uploader("上传图片", type=['jpg','png'])
+    if up:
+        fb = np.asarray(bytearray(up.read()), dtype=np.uint8)
+        img = cv2.imdecode(fb, 1)
+        img = cv2.resize(img, (int(img.shape[1]*0.6), int(img.shape[0]*0.6)))
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)).apply(gray)
+        mask = np.zeros(img.shape[:2], dtype=np.uint8)
+        cv2.circle(mask, (img.shape[1]//2, img.shape[0]//2), roi, 255, -1)
+        masked = cv2.bitwise_and(gray, gray, mask=mask)
+        blur = cv2.GaussianBlur(masked, (5,5), 0)
+        if d_l: _, th = cv2.threshold(blur, th_val, 255, cv2.THRESH_BINARY)
+        else: _, th = cv2.threshold(blur, th_val, 255, cv2.THRESH_BINARY_INV)
+        th = cv2.bitwise_and(th, th, mask=mask)
+        cnts, _ = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        res = img.copy()
+        cv2.circle(res, (img.shape[1]//2, img.shape[0]//2), roi, (0,0,255), 2)
+        c = 0
+        for ct in cnts:
+            if d_m < cv2.contourArea(ct) < 3000:
+                c+=1
+                cv2.drawContours(res, [ct], -1, (0,255,0), 2)
+        st.image(res, channels="BGR", use_container_width=True)
+        st.success(f"计数结果：{c}")
 
-# === 页面 3: 仪器图谱 ===
-elif "仪器" in menu:
-    st.title("📷 仪器图谱 (Instrument ID)")
+elif "📷 仪器图谱" in menu:
+    st.title("📷 仪器图谱")
     c1, c2 = st.columns([1, 1.5])
     with c1:
-        cam = st.camera_input("拍摄设备")
-        up = st.file_uploader("或上传照片", type=["jpg","png"], key="i_up")
+        cam = st.camera_input("拍照")
+        up = st.file_uploader("或上传", type=["jpg","png"], key="i_up")
         f_img = cam if cam else up
     with c2:
-        if f_img and st.button("开始识别", key="btn_i"):
-            if not api_key: st.error("❌ 请先配置 API Key")
+        if f_img and st.button("开始识别"):
+            if not api_key: st.error("请填入 API Key")
             else:
                 try:
-                    with st.spinner("🚀 正在匹配设备特征库..."):
+                    with st.spinner("分析中..."):
                         cli = OpenAI(api_key=api_key, base_url=base_url)
                         b64 = encode_image(f_img.getvalue())
-                        p = "你是一位资深实验室管理专家。请识别图中的仪器。请输出一份【设备档案】，格式必须为 HTML div class='result-card'。不要使用markdown代码块。"
+                        p = "识别仪器。输出HTML class='result-card'。不要Markdown。"
                         r = cli.chat.completions.create(model="glm-4v", messages=[{"role":"user","content":[{"type":"text","text":p},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]}] )
-                        
-                        # === 使用清洗函数 ===
-                        clean_content = clean_html_output(r.choices[0].message.content)
-                        st.markdown(clean_content, unsafe_allow_html=True)
-                        st.success("✅ 设备档案检索成功")
-                except Exception as e: st.error(f"识别服务异常: {str(e)}")
+                        st.markdown(clean_html_output(r.choices[0].message.content), unsafe_allow_html=True)
+                except Exception as e: st.error(f"Error: {e}")
 
-# === 页面 4: 文献精读 ===
-elif "文献" in menu:
-    st.title("📄 文献精读 (Paper Agent)")
-    uploaded_pdf = st.file_uploader("上传 PDF 文献全文", type=["pdf"], key="pdf_full")
-    
-    if uploaded_pdf and st.button("🚀 开始深度精读", key="btn_full_pdf"):
-        if not api_key: st.error("❌ 请先配置 API Key")
+elif "📄 文献精读 (Pro)" in menu:
+    st.title("📄 文献精读")
+    uploaded_pdf = st.file_uploader("上传 PDF", type=["pdf"], key="pdf_full")
+    if uploaded_pdf and st.button("开始分析"):
+        if not api_key: st.error("请填入 API Key")
         else:
             try:
-                with st.spinner("1/3 正在提取全文数据..."):
+                with st.spinner("读取中..."):
                     full_text = read_full_pdf(uploaded_pdf)
-                    if not full_text or len(full_text) < 200: st.error("❌ 文本提取失败。")
+                    if not full_text: st.error("无法读取文本")
                     else:
-                        st.toast(f"提取成功！", icon="📑")
                         truncated_text = full_text[:80000] 
-                        with st.spinner("2/3 AI 正在进行逻辑拆解..."):
-                            client = OpenAI(api_key=api_key, base_url=base_url)
+                        with st.spinner("AI 思考中..."):
+                            cli = OpenAI(api_key=api_key, base_url=base_url)
                             deep_prompt = """
-                            你是一位资深生物科学家。精读全文。必须中文回答，内容详实，HTML格式。
-                            **直接输出 HTML 代码，严禁使用 Markdown 代码块（不要用 ```html）。**
-                            
-                            输出结构（确保使用 class="result-card"）：
-                            <div class="result-card"><h3>📑 深度导读</h3><h4>1.标题翻译</h4>...<h4>2.核心发现</h4>...</div>
-                            <div class="result-card reagent-card"><h3>📦 关键试剂与耗材</h3><ul>...</ul></div>
-                            <div class="result-card protocol-card"><h3>⚗️ 标准化实验流</h3><ol>...</ol></div>
+                            精读全文。必须中文。直接输出HTML。
+                            结构：
+                            <div class="result-card"><h3>📑 深度导读</h3>...</div>
+                            <div class="result-card reagent-card"><h3>📦 试剂耗材</h3>...</div>
+                            <div class="result-card protocol-card"><h3>⚗️ 实验步骤</h3>...</div>
                             """
-                            response = client.chat.completions.create(model="glm-4-flash", messages=[{"role": "user", "content": f"{deep_prompt}\n\n{truncated_text}"}], max_tokens=3000)
-                        
-                        with st.spinner("3/3 正在生成分析报告..."):
-                            # === 使用清洗函数 ===
-                            clean_content = clean_html_output(response.choices[0].message.content)
-                            st.markdown(clean_content, unsafe_allow_html=True)
-                            st.success("✅ 文献精读报告已生成")
-            except Exception as e: st.error(f"分析中断: {e}")
+                            resp = cli.chat.completions.create(model="glm-4-flash", messages=[{"role": "user", "content": f"{deep_prompt}\n\n{truncated_text}"}], max_tokens=3000)
+                        st.markdown(clean_html_output(resp.choices[0].message.content), unsafe_allow_html=True)
+            except Exception as e: st.error(f"Error: {e}")
