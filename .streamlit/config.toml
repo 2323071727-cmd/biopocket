@@ -1,12 +1,5 @@
 [client]
-toolbarMode = "viewer"
-
-[theme]
-primaryColor="#0d6efd"
-backgroundColor="#FFFFFF"
-secondaryBackgroundColor="#F0F2F6"
-textColor="#212529"
-font="sans serif"
+toolbarMode = "viewer"  # 隐藏开发者菜单
 
 [ui]
-hideTopBar = true
+hideTopBar = true       # 【关键】隐藏顶部的红线和汉堡菜单
