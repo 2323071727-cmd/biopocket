@@ -9,7 +9,7 @@ import pdfplumber
 import re
 
 # -----------------------------------------------------------------------------
-# 1. 全局配置
+# 1. 全局配置 (V21 Mobile Fix)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="BioPocket Pro", 
@@ -23,14 +23,8 @@ st.set_page_config(
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-        /* 隐藏 Streamlit 自带的顶部红线和菜单 */
-        header {visibility: hidden;}
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        [data-testid="stToolbar"] {visibility: hidden;}
-
         body {font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;}
-        h1 {color: #0E1117; font-weight: 700;}
+        h1 {color: #0E1117; font-weight: 700; letter-spacing: -0.5px;}
         
         .result-card {
             background-color: #f8f9fa; 
@@ -41,6 +35,7 @@ st.markdown("""
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         
+        /* 强制黑字 */
         .result-card, .result-card p, .result-card li, .result-card div, .result-card span {
             color: #212529 !important; 
             font-size: 16px !important;
@@ -89,23 +84,23 @@ def read_full_pdf(uploaded_file):
     except Exception as e:
         return None
 
-# === HTML 清洗函数 ===
+# === 新增：HTML 清洗函数 (修复文献显示为代码的问题) ===
 def clean_html_output(text):
     if not text: return ""
     text = text.strip()
+    # 去掉 AI 可能添加的 ```html 标记
     text = re.sub(r'^```html', '', text, flags=re.IGNORECASE)
     text = re.sub(r'^```', '', text)
     text = re.sub(r'```$', '', text)
     return text.strip()
 
 # -----------------------------------------------------------------------------
-# 4. 侧边栏
+# 4. 侧边栏导航
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # ✅ 修复点：纯净 URL，无 markdown 符号
-    st.image("[https://cdn-icons-png.flaticon.com/512/3022/3022288.png](https://cdn-icons-png.flaticon.com/512/3022/3022288.png)", width=60)
+    st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
     st.title("BioPocket")
-    st.caption("v24.4 | Final Fix") 
+    st.caption("v21.1 | Mobile Fix")
     st.markdown("---")
     
     menu = st.radio(
@@ -121,13 +116,13 @@ with st.sidebar:
         api_key = st.text_input("API Key (在此输入)", type="password")
         
         with st.expander("高级参数设置", expanded=False):
-            # ✅ 修复点：纯净 URL
-            base_url = st.text_input("Base URL", value="[https://open.bigmodel.cn/api/paas/v4/](https://open.bigmodel.cn/api/paas/v4/)")
+            base_url = st.text_input("Base URL", value="https://open.bigmodel.cn/api/paas/v4/")
 
 # -----------------------------------------------------------------------------
 # 5. 主逻辑区
 # -----------------------------------------------------------------------------
 
+# === 页面 1: 实验室工作台 ===
 if "工作台" in menu:
     st.title("🚀 实验室工作台")
     st.markdown("**BioPocket 科研智能体** - 您的口袋实验室助手")
@@ -136,9 +131,9 @@ if "工作台" in menu:
     col1.metric("累计分析样本", "1,524", "+12 今天")
     col2.metric("文献智库", "102 篇", "已索引")
     col3.metric("云端算力", "GLM-4", "Online")
-    # ✅ 修复点：纯净 URL
-    st.image("[https://images.unsplash.com/photo-1532094349884-543bc11b234d](https://images.unsplash.com/photo-1532094349884-543bc11b234d)", use_container_width=True)
+    st.image("https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&q=80&w=1000", use_container_width=True)
 
+# === 页面 2: 智能计数 ===
 elif "计数" in menu:
     st.title("🧫 智能计数 (AI Counter)")
     c1, c2 = st.columns([1, 2])
@@ -178,58 +173,64 @@ elif "计数" in menu:
                     c+=1
                     cv2.drawContours(res, [ct], -1, (0,255,0), 2)
             st.image(res, channels="BGR", caption=f"识别结果: {c}", use_container_width=True)
-            st.success(f"✅ 计数完成：**{c}**")
+            st.success(f"✅ 计数完成：共检测到 **{c}** 个目标。")
 
+# === 页面 3: 仪器图谱 ===
 elif "仪器" in menu:
     st.title("📷 仪器图谱 (Instrument ID)")
     c1, c2 = st.columns([1, 1.5])
     with c1:
-        cam = st.camera_input("拍摄")
-        up = st.file_uploader("或上传", type=["jpg","png"], key="i_up")
+        cam = st.camera_input("拍摄设备")
+        up = st.file_uploader("或上传照片", type=["jpg","png"], key="i_up")
         f_img = cam if cam else up
     with c2:
         if f_img and st.button("开始识别", key="btn_i"):
             if not api_key: st.error("❌ 请先配置 API Key")
             else:
                 try:
-                    with st.spinner("🚀 识别中..."):
+                    with st.spinner("🚀 正在匹配设备特征库..."):
                         cli = OpenAI(api_key=api_key, base_url=base_url)
                         b64 = encode_image(f_img.getvalue())
-                        p = "你是一位专家。请识别仪器。输出HTML class='result-card'。不要使用markdown代码块。"
+                        p = "你是一位资深实验室管理专家。请识别图中的仪器。请输出一份【设备档案】，格式必须为 HTML div class='result-card'。不要使用markdown代码块。"
                         r = cli.chat.completions.create(model="glm-4v", messages=[{"role":"user","content":[{"type":"text","text":p},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]}] )
+                        
+                        # === 使用清洗函数 ===
                         clean_content = clean_html_output(r.choices[0].message.content)
                         st.markdown(clean_content, unsafe_allow_html=True)
-                        st.success("✅ 检索成功")
-                except Exception as e: st.error(f"Error: {e}")
+                        st.success("✅ 设备档案检索成功")
+                except Exception as e: st.error(f"识别服务异常: {str(e)}")
 
+# === 页面 4: 文献精读 ===
 elif "文献" in menu:
     st.title("📄 文献精读 (Paper Agent)")
-    st.info("💡 全文深度解析引擎：支持超长 PDF。")
     uploaded_pdf = st.file_uploader("上传 PDF 文献全文", type=["pdf"], key="pdf_full")
+    
     if uploaded_pdf and st.button("🚀 开始深度精读", key="btn_full_pdf"):
         if not api_key: st.error("❌ 请先配置 API Key")
         else:
             try:
-                with st.spinner("1/3 提取全文..."):
+                with st.spinner("1/3 正在提取全文数据..."):
                     full_text = read_full_pdf(uploaded_pdf)
-                    if not full_text or len(full_text) < 200: st.error("❌ 文本提取失败")
+                    if not full_text or len(full_text) < 200: st.error("❌ 文本提取失败。")
                     else:
-                        st.toast(f"提取成功，字数：{len(full_text)}", icon="📑")
+                        st.toast(f"提取成功！", icon="📑")
                         truncated_text = full_text[:80000] 
-                        with st.spinner("2/3 AI 深度分析..."):
-                            cli = OpenAI(api_key=api_key, base_url=base_url)
+                        with st.spinner("2/3 AI 正在进行逻辑拆解..."):
+                            client = OpenAI(api_key=api_key, base_url=base_url)
                             deep_prompt = """
-                            你是一位精通中英文的资深生物科学家。精读全文。必须中文回答。
+                            你是一位资深生物科学家。精读全文。必须中文回答，内容详实，HTML格式。
                             **直接输出 HTML 代码，严禁使用 Markdown 代码块（不要用 ```html）。**
                             
-                            输出结构：
+                            输出结构（确保使用 class="result-card"）：
                             <div class="result-card"><h3>📑 深度导读</h3><h4>1.标题翻译</h4>...<h4>2.核心发现</h4>...</div>
                             <div class="result-card reagent-card"><h3>📦 关键试剂与耗材</h3><ul>...</ul></div>
                             <div class="result-card protocol-card"><h3>⚗️ 标准化实验流</h3><ol>...</ol></div>
                             """
-                            resp = cli.chat.completions.create(model="glm-4-flash", messages=[{"role": "user", "content": f"{deep_prompt}\n\n{truncated_text}"}], max_tokens=3000)
+                            response = client.chat.completions.create(model="glm-4-flash", messages=[{"role": "user", "content": f"{deep_prompt}\n\n{truncated_text}"}], max_tokens=3000)
                         
-                        clean_content = clean_html_output(resp.choices[0].message.content)
-                        st.markdown(clean_content, unsafe_allow_html=True)
-                        st.success("✅ 报告已生成")
+                        with st.spinner("3/3 正在生成分析报告..."):
+                            # === 使用清洗函数 ===
+                            clean_content = clean_html_output(response.choices[0].message.content)
+                            st.markdown(clean_content, unsafe_allow_html=True)
+                            st.success("✅ 文献精读报告已生成")
             except Exception as e: st.error(f"分析中断: {e}")
