@@ -4,80 +4,171 @@ import numpy as np
 import pandas as pd
 import time
 import base64
-from openai import OpenAI  # 引入通用库
+from openai import OpenAI
 
 # -----------------------------------------------------------------------------
 # 1. 全局配置
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="BioPocket V12 CN", 
-    page_icon="🇨🇳", 
+    page_title="BioPocket V13 Pro", 
+    page_icon="🧬", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
 # -----------------------------------------------------------------------------
-# 2. 样式优化
+# 2. 样式优化 (V13 重点修复：强制黑字)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
         h1 {font-family: 'Helvetica Neue', sans-serif; font-weight: 700; color: #0E1117;}
+        
+        /* === 修复的核心：结果卡片样式 === */
         .result-card {
-            background-color: #f0f8ff; padding: 20px; border-radius: 10px;
-            border-left: 5px solid #007bff; margin-bottom: 20px;
+            background-color: #e3f2fd; /* 淡蓝色背景 */
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #1976d2; /* 深蓝线条 */
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        /* 强制卡片内的所有文字颜色为黑色 (覆盖 Streamlit 深色模式) */
+        .result-card, .result-card p, .result-card li, .result-card div {
+            color: #000000 !important; 
+            font-size: 16px !important;
+            line-height: 1.6 !important;
+        }
+        
+        /* 标题颜色 */
+        .result-card h3 {
+            color: #0d47a1 !important; /* 深蓝色标题 */
+            margin-top: 0 !important;
+            font-weight: bold !important;
+        }
+        
+        /* 强调文字 */
+        .result-card strong {
+            color: #d32f2f !important; /* 红色强调 */
         }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. 侧边栏
-# -----------------------------------------------------------------------------
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
-    st.title("BioPocket")
-    st.caption("v12.0 | 国产大模型版")
-    st.markdown("---")
-    menu = st.radio("功能导航", ["📊 看板", "🧫 菌落计数", "📷 仪器识别 (国产AI)", "📄 文献速读"], index=2)
-    
-    # === 关键：国产 AI 配置 ===
-    if "仪器" in menu:
-        st.markdown("---")
-        st.markdown("#### 🔑 模型配置")
-        st.info("推荐使用 **智谱GLM-4V** (国产视觉最强)")
-        
-        # 让用户填 Key
-        api_key = st.text_input("API Key (智谱/DeepSeek)", type="password")
-        
-        # 高级设置：允许用户换模型 (比如换成 DeepSeek 写文案，换 GLM-4V 看图)
-        with st.expander("高级模型设置"):
-            base_url = st.text_input("Base URL", value="https://open.bigmodel.cn/api/paas/v4/")
-            model_name = st.text_input("Model Name", value="glm-4v")
-            st.caption("说明：如果是DeepSeek，URL填 https://api.deepseek.com，模型填 deepseek-chat (但在看图功能会报错)")
-
-# -----------------------------------------------------------------------------
-# 4. 辅助函数：图片转 Base64 (国产模型通用的看图方式)
+# 3. 辅助函数：图片转 Base64
 # -----------------------------------------------------------------------------
 def encode_image(image_bytes):
     return base64.b64encode(image_bytes).decode('utf-8')
 
 # -----------------------------------------------------------------------------
+# 4. 侧边栏
+# -----------------------------------------------------------------------------
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
+    st.title("BioPocket")
+    st.caption("v13.0 | UI Fixed Edition")
+    st.markdown("---")
+    menu = st.radio("功能导航", ["📊 看板", "🧫 菌落计数", "📷 仪器识别 (国产AI)", "📄 文献速读"], index=2)
+    
+    # === 国产 AI 配置 ===
+    if "仪器" in menu:
+        st.markdown("---")
+        st.markdown("#### 🔑 模型配置")
+        st.info("推荐使用 **智谱GLM-4V**")
+        
+        # 让用户填 Key
+        api_key = st.text_input("API Key (粘贴在这里)", type="password")
+        
+        # 高级设置 (默认隐藏)
+        with st.expander("高级模型设置"):
+            base_url = st.text_input("Base URL", value="https://open.bigmodel.cn/api/paas/v4/")
+            model_name = st.text_input("Model Name", value="glm-4v")
+
+# -----------------------------------------------------------------------------
 # 5. 主逻辑
 # -----------------------------------------------------------------------------
 
-# === 页面 1 & 2 (看板/菌落) 保持不变，为了篇幅省略，请保留之前的代码 ===
+# === 页面 1: 看板 ===
 if "看板" in menu:
     st.title("📊 实验室综合管控台")
-    st.info("Dashboard Ready.")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("已识别菌落", "1,240+", "+12%")
+    col2.metric("文献阅读", "85 篇", "+5")
+    col3.metric("仪器数据库", "Online", "v2.0")
+    st.info("系统运行正常。")
 
+# === 页面 2: 菌落计数 (保留 V9 完整代码) ===
 elif "菌落" in menu:
-    st.title("🧫 智能菌落计数 (V9 完美版)")
-    # ... (此处请把 V9 的菌落计数代码完整复制过来，或者我帮你留个占位符)
-    # ⚠️ 为了代码完整性，请务必保留之前的菌落计数逻辑！
-    st.warning("请将 V9 的菌落计数代码粘贴回这里，保持功能完整。")
+    st.title("🧫 智能菌落计数 (修复版)")
+    
+    c1, c2 = st.columns([1, 2])
+    
+    # --- 左侧：核心参数 ---
+    with c1:
+        st.markdown("### 🎯 区域与参数")
+        with st.container(border=True):
+            roi_radius = st.slider("有效区域半径 (ROI)", 10, 500, 280, help="排除边缘干扰")
+            st.markdown("---")
+            is_light_colony = st.checkbox("✅ 菌落是亮的 (黑底白菌)", value=True)
+            use_clahe = st.checkbox("启用增强 (CLAHE)", value=True)
+            thresh_val = st.slider("亮度阈值", 0, 255, 140)
+            min_area = st.slider("最小面积", 1, 200, 10)
 
-# === 页面 3: 国产 AI 仪器识别 (V12) ===
+        uploaded_file = st.file_uploader("上传培养皿图像", type=['jpg', 'png'])
+
+    # --- 右侧：可视化分析 ---
+    with c2:
+        if uploaded_file:
+            file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+            original_image = cv2.imdecode(file_bytes, 1)
+            
+            # 缩放处理
+            scale_percent = 60
+            width = int(original_image.shape[1] * scale_percent / 100)
+            height = int(original_image.shape[0] * scale_percent / 100)
+            image = cv2.resize(original_image, (width, height), interpolation=cv2.INTER_AREA)
+            
+            h, w = image.shape[:2]
+            center_x, center_y = w // 2, h // 2
+
+            # ROI 掩膜
+            mask = np.zeros((h, w), dtype=np.uint8)
+            cv2.circle(mask, (center_x, center_y), roi_radius, 255, -1)
+            
+            # 预处理
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            if use_clahe:
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                gray = clahe.apply(gray)
+
+            masked_gray = cv2.bitwise_and(gray, gray, mask=mask)
+            blurred = cv2.GaussianBlur(masked_gray, (5, 5), 0)
+            
+            # 阈值处理 (反色逻辑)
+            if is_light_colony:
+                _, thresh = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY)
+            else:
+                _, thresh = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY_INV)
+            
+            thresh = cv2.bitwise_and(thresh, thresh, mask=mask)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            result_img = image.copy()
+            cv2.circle(result_img, (center_x, center_y), roi_radius, (0, 0, 255), 2)
+            
+            count = 0
+            for cnt in contours:
+                area = cv2.contourArea(cnt)
+                if min_area < area < 3000:
+                    count += 1
+                    cv2.drawContours(result_img, [cnt], -1, (0, 255, 0), 2)
+
+            st.image(result_img, channels="BGR", caption=f"识别结果: {count}", use_container_width=True)
+            st.success(f"✅ 计数完成：{count} CFU")
+
+# === 页面 3: 国产 AI 仪器识别 (V13 CSS修复版) ===
 elif "仪器" in menu:
-    st.title("📷 实验室 AI 慧眼 (Powered by GLM-4V)")
+    st.title("📷 实验室 AI 慧眼 (国产大模型)")
     
     col_cam, col_res = st.columns([1, 1.5])
 
@@ -92,11 +183,11 @@ elif "仪器" in menu:
             
             if st.button("开始 AI 识别"):
                 if not api_key:
-                    st.error("请先在侧边栏填写 API Key！")
+                    st.error("❌ 请先在侧边栏填写 API Key！")
                 else:
                     try:
                         with st.spinner("🚀 正在连接国产智算中心..."):
-                            # 1. 初始化通用客户端
+                            # 1. 初始化客户端
                             client = OpenAI(
                                 api_key=api_key,
                                 base_url=base_url
@@ -105,14 +196,14 @@ elif "仪器" in menu:
                             # 2. 图片转码
                             base64_image = encode_image(final_img.getvalue())
                             
-                            # 3. 发送请求 (OpenAI 视觉标准格式)
+                            # 3. 发送请求
                             response = client.chat.completions.create(
                                 model=model_name,
                                 messages=[
                                     {
                                         "role": "user",
                                         "content": [
-                                            {"type": "text", "text": "你是一个生物实验室安全专家。请识别图中的仪器，并按格式输出：名称、功能、SOP(3点)、风险(2点)。"},
+                                            {"type": "text", "text": "你是一个实验室安全专家。请识别图中的仪器。请使用HTML格式回答，不要使用Markdown代码块。回答包括：<h3>仪器名称</h3>，<p>功能简介</p>，<p><strong>安全SOP：</strong></p><ul><li>第一条...</li><li>第二条...</li></ul>，<p><strong>风险提示：</strong>...</p>"},
                                             {
                                                 "type": "image_url",
                                                 "image_url": {
@@ -122,26 +213,26 @@ elif "仪器" in menu:
                                         ]
                                     }
                                 ],
-                                max_tokens=1000  # 稍微限制一下字数
+                                max_tokens=1000
                             )
                             
                             # 4. 获取结果
                             result_text = response.choices[0].message.content
                             
-                            # 5. 展示
+                            # 5. 展示 (应用 CSS 修复类名)
                             st.markdown(f"""
                             <div class="result-card">
-                                <h3>🔍 识别报告</h3>
-                                {result_text.replace(chr(10), '<br>')}
+                                {result_text}
                             </div>
                             """, unsafe_allow_html=True)
-                            st.success("✅ 识别成功！数据来源：国产大模型")
+                            
+                            st.success("✅ 识别成功！(数据源：国产大模型)")
 
                     except Exception as e:
                         st.error(f"请求失败: {e}")
-                        st.info("如果你用的是 DeepSeek，请注意：DeepSeek 目前 API 不支持直接看图，请改用智谱 GLM-4V。")
+                        st.info("请检查 API Key 是否正确，或网络是否通畅。")
 
 # === 页面 4: 文献 ===
 elif "文献" in menu:
     st.title("📄 文献速读")
-    st.write("Coming soon...")
+    st.info("功能开发中...")
