@@ -6,7 +6,7 @@ import time
 import base64
 from openai import OpenAI
 import pdfplumber
-import re  # 引入正则库用于清洗数据
+import re
 
 # -----------------------------------------------------------------------------
 # 1. 全局配置
@@ -83,11 +83,13 @@ def read_full_pdf(uploaded_file):
     except Exception as e:
         return None
 
-# === V22 新增：强力清洗函数 ===
+# === V23 强力清洗函数 (修复显示代码的问题) ===
 def clean_html_output(text):
-    # 移除 ```html ... ``` 这种包裹
-    text = re.sub(r'```html', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'```', '', text)
+    text = text.strip()
+    # 1. 去掉开头的 ```html 或 ```xml 或 ``` 
+    text = re.sub(r'^```[a-zA-Z]*\n?', '', text)
+    # 2. 去掉结尾的 ```
+    text = re.sub(r'\n?```$', '', text)
     return text.strip()
 
 # -----------------------------------------------------------------------------
@@ -96,7 +98,7 @@ def clean_html_output(text):
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
     st.title("BioPocket")
-    st.caption("v22.0 | Stable Release")
+    st.caption("v23.0 | HTML Rendering Fix")
     st.markdown("---")
     
     menu = st.radio(
@@ -184,9 +186,9 @@ elif "仪器" in menu:
                     with st.spinner("🚀 识别中..."):
                         cli = OpenAI(api_key=api_key, base_url=base_url)
                         b64 = encode_image(f_img.getvalue())
-                        p = "你是一位专家。请识别仪器。输出HTML class='result-card'。"
+                        p = "你是一位专家。请识别仪器。输出HTML class='result-card'。不要使用markdown代码块。"
                         r = cli.chat.completions.create(model="glm-4v", messages=[{"role":"user","content":[{"type":"text","text":p},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]}] )
-                        # 使用清洗函数
+                        # 使用 V23 强力清洗
                         clean = clean_html_output(r.choices[0].message.content)
                         st.markdown(clean, unsafe_allow_html=True)
                         st.success("✅ 检索成功")
@@ -210,16 +212,16 @@ elif "文献" in menu:
                             cli = OpenAI(api_key=api_key, base_url=base_url)
                             deep_prompt = """
                             你是一位精通中英文的资深生物科学家。精读全文。必须中文回答。
-                            **直接输出 HTML 代码，不要用Markdown包裹。**
-
-                            输出结构：
+                            **请直接输出HTML代码，不要包裹在 ```html 中。**
+                            
+                            输出结构（确保使用 class="result-card"）：
                             <div class="result-card"><h3>📑 深度导读</h3><h4>1.标题翻译</h4>...<h4>2.核心发现</h4>...</div>
                             <div class="result-card reagent-card"><h3>📦 关键试剂与耗材</h3><ul>...</ul></div>
                             <div class="result-card protocol-card"><h3>⚗️ 标准化实验流</h3><ol>...</ol></div>
                             """
                             resp = cli.chat.completions.create(model="glm-4-flash", messages=[{"role": "user", "content": f"{deep_prompt}\n\n{truncated_text}"}], max_tokens=3000)
                         
-                        # 使用清洗函数，确保显示卡片
+                        # 使用 V23 强力清洗
                         clean = clean_html_output(resp.choices[0].message.content)
                         st.markdown(clean, unsafe_allow_html=True)
                         st.success("✅ 报告已生成")
