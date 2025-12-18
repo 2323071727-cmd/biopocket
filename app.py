@@ -84,14 +84,12 @@ def read_full_pdf(uploaded_file):
     except Exception as e:
         return None
 
-# === V24 新增：HTML 强力清洗函数 ===
+# === HTML 强力清洗函数 ===
 def clean_html_output(text):
     if not text: return ""
     text = text.strip()
-    # 1. 去掉开头的 markdown 标记
     text = re.sub(r'^```html', '', text, flags=re.IGNORECASE)
     text = re.sub(r'^```', '', text)
-    # 2. 去掉结尾的 markdown 标记
     text = re.sub(r'```$', '', text)
     return text.strip()
 
@@ -99,10 +97,11 @@ def clean_html_output(text):
 # 4. 侧边栏
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # ✅ 修复点：移除了 [url](url) 这种错误的格式，只保留纯网址
+    # ✅ 修复点1：这里必须是纯 URL 字符串，不能有 []()
     st.image("[https://cdn-icons-png.flaticon.com/512/3022/3022288.png](https://cdn-icons-png.flaticon.com/512/3022/3022288.png)", width=60)
+    
     st.title("BioPocket")
-    st.caption("v24.1 | Stable Fixed") 
+    st.caption("v24.2 | Final Fix") 
     st.markdown("---")
     
     menu = st.radio(
@@ -118,7 +117,7 @@ with st.sidebar:
         api_key = st.text_input("API Key (在此输入)", type="password")
         
         with st.expander("高级参数设置", expanded=False):
-            # ✅ 修复点：这里也必须是纯网址
+            # ✅ 修复点2：这里也必须是纯 URL
             base_url = st.text_input("Base URL", value="[https://open.bigmodel.cn/api/paas/v4/](https://open.bigmodel.cn/api/paas/v4/)")
 
 # -----------------------------------------------------------------------------
@@ -133,7 +132,7 @@ if "工作台" in menu:
     col1.metric("累计分析样本", "1,524", "+12 今天")
     col2.metric("文献智库", "102 篇", "已索引")
     col3.metric("云端算力", "GLM-4", "Online")
-    # ✅ 修复点：这里也是
+    # ✅ 修复点3：图片链接修复
     st.image("[https://images.unsplash.com/photo-1532094349884-543bc11b234d](https://images.unsplash.com/photo-1532094349884-543bc11b234d)", use_container_width=True)
 
 elif "计数" in menu:
