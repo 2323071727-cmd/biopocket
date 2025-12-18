@@ -6,7 +6,7 @@ import time
 import base64
 from openai import OpenAI
 import pdfplumber
-import re
+import re  # 引入正则库用于清洗数据
 
 # -----------------------------------------------------------------------------
 # 1. 全局配置
@@ -25,7 +25,6 @@ st.markdown("""
     <style>
         body {font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;}
         
-        /* 结果卡片通用样式 */
         .result-card {
             background-color: #f8f9fa; 
             padding: 24px;
@@ -35,7 +34,7 @@ st.markdown("""
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         
-        /* 强制黑字修复 */
+        /* 强制黑字 */
         .result-card, .result-card p, .result-card li, .result-card div, .result-card span {
             color: #212529 !important; 
             font-size: 16px !important;
@@ -59,11 +58,9 @@ st.markdown("""
             font-size: 1.1rem !important;
         }
 
-        /* 试剂卡片 (绿色) */
         .reagent-card { background-color: #f1f8f5; border-left: 5px solid #198754; }
         .reagent-card h3 { color: #157347 !important; }
         
-        /* Protocol卡片 (橙色) */
         .protocol-card { background-color: #fff8f0; border-left: 5px solid #fd7e14; }
         .protocol-card h3 { color: #e65100 !important; }
     </style>
@@ -86,10 +83,10 @@ def read_full_pdf(uploaded_file):
     except Exception as e:
         return None
 
-# V22 新增：HTML 清洗函数 (专门解决显示源码的问题)
+# === V22 新增：强力清洗函数 ===
 def clean_html_output(text):
-    # 去掉 ```html 和 ``` 标记
-    text = re.sub(r'```html', '', text)
+    # 移除 ```html ... ``` 这种包裹
+    text = re.sub(r'```html', '', text, flags=re.IGNORECASE)
     text = re.sub(r'```', '', text)
     return text.strip()
 
@@ -99,7 +96,7 @@ def clean_html_output(text):
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
     st.title("BioPocket")
-    st.caption("v22.0 | Desktop Fixed")
+    st.caption("v22.0 | Stable Release")
     st.markdown("---")
     
     menu = st.radio(
@@ -121,7 +118,6 @@ with st.sidebar:
 # 5. 主逻辑区
 # -----------------------------------------------------------------------------
 
-# === 页面 1: 工作台 ===
 if "工作台" in menu:
     st.title("🚀 实验室工作台")
     st.markdown("**BioPocket 科研智能体** - 您的口袋实验室助手")
@@ -132,7 +128,6 @@ if "工作台" in menu:
     col3.metric("云端算力", "GLM-4", "Online")
     st.image("https://images.unsplash.com/photo-1532094349884-543bc11b234d", use_container_width=True)
 
-# === 页面 2: 计数 ===
 elif "计数" in menu:
     st.title("🧫 智能计数 (AI Counter)")
     c1, c2 = st.columns([1, 2])
@@ -174,7 +169,6 @@ elif "计数" in menu:
             st.image(res, channels="BGR", caption=f"识别结果: {c}", use_container_width=True)
             st.success(f"✅ 计数完成：**{c}**")
 
-# === 页面 3: 仪器 ===
 elif "仪器" in menu:
     st.title("📷 仪器图谱 (Instrument ID)")
     c1, c2 = st.columns([1, 1.5])
@@ -190,15 +184,14 @@ elif "仪器" in menu:
                     with st.spinner("🚀 识别中..."):
                         cli = OpenAI(api_key=api_key, base_url=base_url)
                         b64 = encode_image(f_img.getvalue())
-                        p = "你是一位专家。请识别仪器。输出HTML class='result-card'。不要使用markdown代码块。"
+                        p = "你是一位专家。请识别仪器。输出HTML class='result-card'。"
                         r = cli.chat.completions.create(model="glm-4v", messages=[{"role":"user","content":[{"type":"text","text":p},{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}}]}] )
                         # 使用清洗函数
-                        clean_content = clean_html_output(r.choices[0].message.content)
-                        st.markdown(clean_content, unsafe_allow_html=True)
+                        clean = clean_html_output(r.choices[0].message.content)
+                        st.markdown(clean, unsafe_allow_html=True)
                         st.success("✅ 检索成功")
                 except Exception as e: st.error(f"Error: {e}")
 
-# === 页面 4: 文献 ===
 elif "文献" in menu:
     st.title("📄 文献精读 (Paper Agent)")
     st.info("💡 全文深度解析引擎：支持超长 PDF。")
@@ -217,7 +210,7 @@ elif "文献" in menu:
                             cli = OpenAI(api_key=api_key, base_url=base_url)
                             deep_prompt = """
                             你是一位精通中英文的资深生物科学家。精读全文。必须中文回答。
-                            **绝对禁止使用Markdown代码块（不要用 ```html）。直接输出 HTML 代码。**
+                            **直接输出 HTML 代码，不要用Markdown包裹。**
 
                             输出结构：
                             <div class="result-card"><h3>📑 深度导读</h3><h4>1.标题翻译</h4>...<h4>2.核心发现</h4>...</div>
@@ -226,8 +219,8 @@ elif "文献" in menu:
                             """
                             resp = cli.chat.completions.create(model="glm-4-flash", messages=[{"role": "user", "content": f"{deep_prompt}\n\n{truncated_text}"}], max_tokens=3000)
                         
-                        # 使用清洗函数，防止乱码
-                        clean_content = clean_html_output(resp.choices[0].message.content)
-                        st.markdown(clean_content, unsafe_allow_html=True)
+                        # 使用清洗函数，确保显示卡片
+                        clean = clean_html_output(resp.choices[0].message.content)
+                        st.markdown(clean, unsafe_allow_html=True)
                         st.success("✅ 报告已生成")
             except Exception as e: st.error(f"分析中断: {e}")
