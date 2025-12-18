@@ -10,20 +10,20 @@ from openai import OpenAI
 # 1. 全局配置
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="BioPocket V13 Pro", 
+    page_title="BioPocket V14 Pro", 
     page_icon="🧬", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
 # -----------------------------------------------------------------------------
-# 2. 样式优化 (V13 重点修复：强制黑字)
+# 2. 样式优化 (强制黑字修复版)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
         h1 {font-family: 'Helvetica Neue', sans-serif; font-weight: 700; color: #0E1117;}
         
-        /* === 修复的核心：结果卡片样式 === */
+        /* === 结果卡片样式 === */
         .result-card {
             background-color: #e3f2fd; /* 淡蓝色背景 */
             padding: 20px;
@@ -33,7 +33,7 @@ st.markdown("""
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
-        /* 强制卡片内的所有文字颜色为黑色 (覆盖 Streamlit 深色模式) */
+        /* 强制卡片内的所有文字颜色为黑色 */
         .result-card, .result-card p, .result-card li, .result-card div {
             color: #000000 !important; 
             font-size: 16px !important;
@@ -66,9 +66,9 @@ def encode_image(image_bytes):
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/3022/3022288.png", width=60)
     st.title("BioPocket")
-    st.caption("v13.0 | UI Fixed Edition")
+    st.caption("v14.0 | Expert Edition")
     st.markdown("---")
-    menu = st.radio("功能导航", ["📊 看板", "🧫 菌落计数", "📷 仪器识别 (国产AI)", "📄 文献速读"], index=2)
+    menu = st.radio("功能导航", ["📊 看板", "🧫 菌落计数", "📷 仪器识别 (专家版)", "📄 文献速读"], index=2)
     
     # === 国产 AI 配置 ===
     if "仪器" in menu:
@@ -97,13 +97,13 @@ if "看板" in menu:
     col3.metric("仪器数据库", "Online", "v2.0")
     st.info("系统运行正常。")
 
-# === 页面 2: 菌落计数 (保留 V9 完整代码) ===
+# === 页面 2: 菌落计数 (V9 完整版) ===
 elif "菌落" in menu:
-    st.title("🧫 智能菌落计数 (修复版)")
+    st.title("🧫 智能菌落计数")
     
     c1, c2 = st.columns([1, 2])
     
-    # --- 左侧：核心参数 ---
+    # --- 左侧：参数 ---
     with c1:
         st.markdown("### 🎯 区域与参数")
         with st.container(border=True):
@@ -116,13 +116,13 @@ elif "菌落" in menu:
 
         uploaded_file = st.file_uploader("上传培养皿图像", type=['jpg', 'png'])
 
-    # --- 右侧：可视化分析 ---
+    # --- 右侧：分析 ---
     with c2:
         if uploaded_file:
             file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
             original_image = cv2.imdecode(file_bytes, 1)
             
-            # 缩放处理
+            # 缩放
             scale_percent = 60
             width = int(original_image.shape[1] * scale_percent / 100)
             height = int(original_image.shape[0] * scale_percent / 100)
@@ -144,7 +144,7 @@ elif "菌落" in menu:
             masked_gray = cv2.bitwise_and(gray, gray, mask=mask)
             blurred = cv2.GaussianBlur(masked_gray, (5, 5), 0)
             
-            # 阈值处理 (反色逻辑)
+            # 阈值处理
             if is_light_colony:
                 _, thresh = cv2.threshold(blurred, thresh_val, 255, cv2.THRESH_BINARY)
             else:
@@ -166,9 +166,9 @@ elif "菌落" in menu:
             st.image(result_img, channels="BGR", caption=f"识别结果: {count}", use_container_width=True)
             st.success(f"✅ 计数完成：{count} CFU")
 
-# === 页面 3: 国产 AI 仪器识别 (V13 CSS修复版) ===
+# === 页面 3: 仪器识别 (V14 鉴宝版) ===
 elif "仪器" in menu:
-    st.title("📷 实验室 AI 慧眼 (国产大模型)")
+    st.title("📷 实验室 AI 慧眼 (Expert Mode)")
     
     col_cam, col_res = st.columns([1, 1.5])
 
@@ -186,7 +186,7 @@ elif "仪器" in menu:
                     st.error("❌ 请先在侧边栏填写 API Key！")
                 else:
                     try:
-                        with st.spinner("🚀 正在连接国产智算中心..."):
+                        with st.spinner("🚀 正在调用实验室知识库..."):
                             # 1. 初始化客户端
                             client = OpenAI(
                                 api_key=api_key,
@@ -196,14 +196,36 @@ elif "仪器" in menu:
                             # 2. 图片转码
                             base64_image = encode_image(final_img.getvalue())
                             
-                            # 3. 发送请求
+                            # 3. 发送请求 (V14 升级版提示词)
                             response = client.chat.completions.create(
                                 model=model_name,
                                 messages=[
                                     {
                                         "role": "user",
                                         "content": [
-                                            {"type": "text", "text": "你是一个实验室安全专家。请识别图中的仪器。请使用HTML格式回答，不要使用Markdown代码块。回答包括：<h3>仪器名称</h3>，<p>功能简介</p>，<p><strong>安全SOP：</strong></p><ul><li>第一条...</li><li>第二条...</li></ul>，<p><strong>风险提示：</strong>...</p>"},
+                                            {"type": "text", "text": """
+                                            你是一位生物实验室仪器专家。请识别这张图片中的仪器。
+                                            
+                                            **识别要求：**
+                                            1. **只输出专业学名：** 请给出该仪器的【标准学术名称】（如：“倒置荧光显微镜”、“台式高速冷冻离心机”），**不需要**猜测具体品牌或型号。
+                                            2. **拒绝笼统：** 名称必须精确，不要只说“显微镜”或“检测仪”。
+                                            3. **输出格式：** 请直接使用以下HTML格式回答（不要使用Markdown代码块）：
+                                            
+                                            <h3>仪器名称</h3>
+                                            <p>（在此处填写专业学名，例如：激光共聚焦扫描显微镜）</p>
+                                            
+                                            <p><strong>功能用途：</strong></p>
+                                            <p>（简要描述该仪器在生物实验中的核心作用）</p>
+                                            
+                                            <p><strong>安全SOP：</strong></p>
+                                            <ul>
+                                            <li>（关键操作规范 1）</li>
+                                            <li>（关键操作规范 2）</li>
+                                            <li>（关键操作规范 3）</li>
+                                            </ul>
+                                            
+                                            <p><strong>风险提示：</strong>...</p>
+                                            """},
                                             {
                                                 "type": "image_url",
                                                 "image_url": {
